@@ -7,14 +7,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class RomanTranslator {
+public class RomanNumeralConverter {
     private Map<String, Integer> romanNumerals = Map.of("I", 1, "V", 5, "X", 10, "L", 50, "C", 100, "D", 500, "M", 1000);
 
     private String repeatedRomanNumber;
     private Map<String, Set<String>> allowedDecreasingValues;
 
-
-    public RomanTranslator() {
+    public RomanNumeralConverter() {
         //only values from key, can be used to decrease. For example can be used V to decrease X.
         allowedDecreasingValues = new HashMap<>();
 
@@ -37,32 +36,16 @@ public class RomanTranslator {
         for (int i = 0; i < length; i++) {
             String numberBeingAnalyzed = inputedCharacters[i];
 
-//            if(i > 1){
-//                int indexForValidation = i-2;
-//                String twoStepsBefor = inputedCharacters[indexForValidation];
-//                if(romanNumerals.get(twoStepsBefor) < romanNumerals.get(analyzingCharacter)){
-//                    throw new IllegalArgumentException(roman + " It's not a valid Roman numeral. You can't use " + twoStepsBefor + " at " + indexForValidation + " index.");
-//                }
-//            }
-//            else
-
-
-//            if(i>1 && inputedCharacters[-1].equals(numberBeingAnalyzed) && romanNumerals.get(inputedCharacters[-2]) < romanNumerals.get(inputedCharacters[1])){
-//                throw new IllegalArgumentException(roman + " It's not a valid Roman numeral. You should write Roman numerals in ascending order whenever possible. It not valid: "
-//                        + inputedCharacters[-2] + " before " + numberBeingAnalyzed);
-//            }
-
-
-            if (lastRomanNumberAnalyzed != null && romanNumerals.get(lastRomanNumberAnalyzed) >= romanNumerals.get(numberBeingAnalyzed)) {
+            if (isAddition(lastRomanNumberAnalyzed, numberBeingAnalyzed)) {
                 decimalNumber += romanNumerals.get(numberBeingAnalyzed);
                 lastRomanNumberAnalyzed = numberBeingAnalyzed;
 
-            } else if (lastRomanNumberAnalyzed != null && romanNumerals.get(lastRomanNumberAnalyzed) < romanNumerals.get(numberBeingAnalyzed)) {
+            } else if (isSubtraction(lastRomanNumberAnalyzed, numberBeingAnalyzed)) {
                 validRomanNumberBeforeCurrent(roman, inputedCharacters, i);
                 decimalNumber += romanNumerals.get(numberBeingAnalyzed) - (romanNumerals.get(lastRomanNumberAnalyzed) * 2);
                 lastRomanNumberAnalyzed = numberBeingAnalyzed;
 
-            } else if (roman.length() == 1) {
+            } else if (isSingleCharacterRomanNumber(roman)) {
                 decimalNumber = romanNumerals.get(numberBeingAnalyzed);
 
             } else {
@@ -73,38 +56,51 @@ public class RomanTranslator {
         return decimalNumber;
     }
 
+    private static boolean isSingleCharacterRomanNumber(String roman) {
+        return roman.length() == 1;
+    }
+
+    private boolean isSubtraction(String lastRomanNumberAnalyzed, String numberBeingAnalyzed) {
+        return lastRomanNumberAnalyzed != null && romanNumerals.get(lastRomanNumberAnalyzed) < romanNumerals.get(numberBeingAnalyzed);
+    }
+
+    private boolean isAddition(String lastRomanNumberAnalyzed, String numberBeingAnalyzed) {
+        return lastRomanNumberAnalyzed != null && romanNumerals.get(lastRomanNumberAnalyzed) >= romanNumerals.get(numberBeingAnalyzed);
+    }
+
     private void validRomanNumberBeforeCurrent(String roman, String[] inputedCharacters, int i) {
         String beforeNumber = i > 0 ? inputedCharacters[i - 1] : null;
         String currentNumber = inputedCharacters[i];
 
-        if (i > 0 && !allowedDecreasingValues.get(beforeNumber).contains(currentNumber)) {
+        if (i > 0 && allowedDecreasingValues.get(beforeNumber) == null) {
+            throw new IllegalArgumentException(roman + " It's not a valid Roman numeral. The numeral " + beforeNumber + " can not be used to decrease " + currentNumber);
+        } else if (i > 0 && !allowedDecreasingValues.get(beforeNumber).contains(currentNumber)) {
             String allowedValues = allowedDecreasingValues.get(beforeNumber).stream().collect(Collectors.joining(","));
-            throw new IllegalArgumentException(roman + " It's not a valid Roman numeral. The numeral " + beforeNumber + " can be only used to subtract these numbers: "  +  allowedValues);
+            throw new IllegalArgumentException(roman + " It's not a valid Roman numeral. The numeral " + beforeNumber + " can be only used to subtract these numbers: " + allowedValues);
+        } else if (i > 0 && i - 2 >= 0 && inputedCharacters[i - 2].equals(beforeNumber)) {
+            throw new IllegalArgumentException(roman + " It's not a valid Roman numeral "
+                    + inputedCharacters[i - 2] + " can be only used to subtract " + currentNumber + " here"
+                    + ". If you want to use " + inputedCharacters[i - 2] + " toggether try to write it after subtraction."
+            );
         }
     }
 
     private void basicValidationsForRomanNumeral(String[] romanNumeral) {
         Map<String, Integer> countRepeatedValues = new HashMap<>();
         Stream<String> stream = Arrays.stream(romanNumeral);
-
+        final String[] previusValue = {""};
         stream.forEach(roman -> {
             if (!this.romanNumerals.containsKey((roman))) {
                 throw new IllegalArgumentException("Invalid Roman numeral");
             } else {
-                int newNumber = countRepeatedValues.get(roman) == null ? 1 : (countRepeatedValues.get(roman) + 1);
+                int newNumber = countRepeatedValues.get(roman) != null && previusValue[0].equals(roman) ? (countRepeatedValues.get(roman) + 1) : 1;
                 countRepeatedValues.put(roman, newNumber);
-                if(newNumber > 3) throw new IllegalArgumentException(roman + "It's not a Roman numeral. It's allowed to repeat the same numeral for only three times.");
+                previusValue[0] = roman;
+                if (newNumber > 3)
+                    throw new IllegalArgumentException(roman + "It's not a Roman numeral. It's allowed to repeat the same numeral for only three times.");
             }
         });
 
 
-
     }
-
-//    private boolean isValidSubtraction(String valueToBeAnalyzed, String previousValue) {
-//        String previusValue = allowedDecreasingValues.get(valueToBeAnalyzed);
-//        return previusValue.equals(previousValue);
-//    }
-
-
 }
